@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juego de Salto</title>
+    <link href="https://fonts.googleapis.com/css2?family=Raleway:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #74ebd5, #9face6);
+            font-family: 'Raleway', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+            color: #fff;
+        }
+        #title {
+            font-size: 48px;
+            font-weight: bold;
+            color: #ffeb3b;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+            margin-bottom: 20px;
+        }
+        #game {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            margin-bottom: 20px;
+            border: 5px solid #ff6347;
+            border-radius: 15px;
+            background-color: rgba(255, 255, 255, 0.1);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        #person {
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            width: 50px;
+            height: 50px;
+            background-color: #ff6347;
+            border-radius: 10px;
+            transition: bottom 0.2s;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        .tree {
+            position: absolute;
+            bottom: 0;
+            width: 20px;
+            height: 40px; /* Altura fija de los árboles */
+            background-color: green;
+            border-radius: 5px;
+            animation: move 2s linear forwards;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes move {
+            0% { left: 100%; }
+            100% { left: -20px; }
+        }
+        #score {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: black;
+            text-shadow: 2px 2px 5px rgba(255, 255, 255, 0.7);
+        }
+        #footer {
+            width: 100%;
+            height: 50px;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+        }
+        #restartButton, #increaseDifficultyButton {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 20px;
+            background-color: #ff6347;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.3s;
+            display: none; /* Oculto inicialmente */
+        }
+        #restartButton:hover, #increaseDifficultyButton:hover {
+            background-color: #ff7f50;
+            transform: scale(1.1);
+        }
+        #jumpButton {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #ff6347;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, transform 0.3s;
+        }
+        #jumpButton:hover {
+            background-color: #ff7f50;
+            transform: scale(1.1);
+        }
+        #difficultyMaxText {
+            display: none;
+            font-size: 24px;
+            color: #ffd600;
+            margin-top: 10px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+        }
+        #gameOverText {
+            display: none;
+            font-size: 36px;
+            color: red;
+            margin-top: 20px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+        }
+    </style>
+</head>
+<body>
+    <div id="title">Jump.io</div>
+    <div id="game">
+        <div id="person"></div>
+        <div id="score">Puntuación: 0</div>
+    </div>
+    <div id="gameOverText">¡Game Over!</div>
+    <button id="restartButton" onclick="restartGame()">Reiniciar Juego</button>
+    <button id="increaseDifficultyButton" onclick="increaseDifficulty()">Aumentar Dificultad</button>
+    <button id="jumpButton" onclick="jump()">Saltar</button>
+    <div id="difficultyMaxText">¡Dificultad Máxima Activada!</div>
+    <div id="footer">Jump.io By Jordi</div>
+    <script>
+        const person = document.getElementById('person');
+        const gameArea = document.getElementById('game');
+        const scoreDisplay = document.getElementById('score');
+        const restartButton = document.getElementById('restartButton');
+        const increaseDifficultyButton = document.getElementById('increaseDifficultyButton');
+        const difficultyMaxText = document.getElementById('difficultyMaxText');
+        const gameOverText = document.getElementById('gameOverText');
+        let isJumping = false;
+        let gameOver = false;
+        let score = 0;
+        let treeInterval;
+        let treeSpeed = 2000; // Velocidad inicial de los árboles
+        const maxDifficultySpeed = 600; // Velocidad máxima para la dificultad
+        const maxTrees = 5; // Máximo de árboles en pantalla
+        const minTreeSpacing = 1000; // Espaciado mínimo entre árboles
+
+        document.addEventListener('keydown', function(event) {
+            if ((event.code === 'Space' || event.code === 'ArrowUp') && !isJumping && !gameOver) {
+                jump();
+            } else if (event.code === 'Enter' && gameOver) {
+                restartGame();
+            }
+        });
+
+        function jump() {
+            if (gameOver) return;
+            isJumping = true;
+            person.style.bottom = '80px'; 
+            setTimeout(() => {
+                person.style.bottom = '0'; 
+                isJumping = false;
+            }, 300);
+        }
+
+        function restartGame() {
+            gameOver = false;
+            score = 0;
+            scoreDisplay.textContent = `Puntuación: ${score}`;
+            restartButton.style.display = 'none'; 
+            increaseDifficultyButton.style.display = 'block'; 
+            gameOverText.style.display = 'none'; // Ocultar mensaje de Game Over
+            difficultyMaxText.style.display = 'none'; 
+            treeSpeed = 2000; 
+            document.body.style.background = "linear-gradient(135deg, #74ebd5, #9face6)"; 
+            person.style.backgroundColor = "#ff6347"; 
+            startGame(); 
+        }
+
+        function startGame() {
+            treeInterval = setInterval(() => {
+                if (!gameOver && document.querySelectorAll('.tree').length < maxTrees) {
+                    const spacing = Math.random() * minTreeSpacing + minTreeSpacing; // Espaciado aleatorio
+                    setTimeout(createTree, spacing);
+                }
+            }, treeSpeed);
+        }
+        const createTree = () => {
+            const tree = document.createElement('div');
+            tree.classList.add('tree');
+            tree.style.left = '100%';
+            gameArea.appendChild(tree);
+
+            const randomHeight = Math.random() * 30 + 20; // Altura aleatoria entre 20px y 50px
+            tree.style.height = `${randomHeight}px`;
+
+            const checkCollision = setInterval(() => {
+                const personRect = person.getBoundingClientRect();
+                const treeRect = tree.getBoundingClientRect();
+
+                if (
+                    personRect.left < treeRect.right &&
+                    personRect.right > treeRect.left &&
+                    personRect.bottom > treeRect.top
+                ) {
+                    gameOver = true;
+                    restartButton.style.display = 'block'; 
+                    increaseDifficultyButton.style.display = 'none'; 
+                    gameOverText.style.display = 'block'; // Mostrar mensaje de Game Over
+                    clearInterval(checkCollision);
+                    tree.remove();
+                }
+            }, 10);
+
+            tree.addEventListener('animationend', () => {
+                clearInterval(checkCollision);
+                if (!gameOver) {
+                    score++;
+                    scoreDisplay.textContent = `Puntuación: ${score}`;
+                }
+                tree.remove();
+            });
+        };
+
+        function increaseDifficulty() {
+            if (!gameOver) {
+                treeSpeed = Math.max(maxDifficultySpeed, treeSpeed - 200); // Aumentar dificultad
+                clearInterval(treeInterval);
+                startGame(); // Reiniciar el juego con nueva velocidad
+
+                // Cambiar colores al aumentar la dificultad
+                document.body.style.background = treeSpeed === maxDifficultySpeed ? "linear-gradient(135deg, #ff5722, #ff9800)" : "linear-gradient(135deg, #74ebd5, #9face6";
+                
+                // Cambiar color del personaje
+                person.style.backgroundColor = treeSpeed === maxDifficultySpeed ? "#ffd600" : "#ff6347"; 
+
+                // Mostrar texto de dificultad máxima
+                difficultyMaxText.style.display = treeSpeed === maxDifficultySpeed ? 'block' : 'none'; 
+            }
+        }
+
+        startGame(); // Iniciar el juego al cargar
+    </script>
+</body>
+</html>
+
